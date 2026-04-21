@@ -3560,6 +3560,9 @@ void CodeViewEditor::ConnectSignalsToSlots()
     connect(m_translateMapper, &QSignalMapper::mappedString, this, &CodeViewEditor::TranslateBlock);
     connect(m_translator, &Translator::translationReady, this, &CodeViewEditor::OnTranslationReady);
     connect(m_translator, &Translator::translationError, this, &CodeViewEditor::OnTranslationError);
+
+    // Fetch available models from sigoREST server
+    m_translator->refreshModels();
 }
 
 void CodeViewEditor::AddTranslateContextMenu(QMenu *menu)
@@ -3567,6 +3570,11 @@ void CodeViewEditor::AddTranslateContextMenu(QMenu *menu)
     QMenu *translateMenu = new QMenu(tr("Translate"), menu);
 
     QStringList models = m_translator->availableModels();
+    if (models.isEmpty()) {
+        // Try refreshing in case server became available
+        m_translator->refreshModels();
+        models = m_translator->availableModels();
+    }
     if (models.isEmpty()) {
         QAction *disabledAction = translateMenu->addAction(tr("No models available"));
         disabledAction->setEnabled(false);
