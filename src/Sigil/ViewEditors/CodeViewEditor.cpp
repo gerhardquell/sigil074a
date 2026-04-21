@@ -44,7 +44,9 @@
 #include "BookManipulation/XhtmlDoc.h"
 #include "MainUI/MainWindow.h"
 #include "Misc/XHTMLHighlighter.h"
+#include "Misc/Translator.h"
 #include "Dialogs/ClipEditor.h"
+#include <QMessageBox>
 #include "Misc/CSSHighlighter.h"
 #include "Misc/SettingsStore.h"
 #include "Misc/SpellCheck.h"
@@ -105,6 +107,10 @@ CodeViewEditor::CodeViewEditor(HighlighterType high_type, bool check_spelling, Q
     m_addDictMapper(new QSignalMapper(this)),
     m_ignoreSpellingMapper(new QSignalMapper(this)),
     m_clipMapper(new QSignalMapper(this)),
+    m_translateMapper(new QSignalMapper(this)),
+    m_translator(new Translator(this)),
+    m_translateStartPos(0),
+    m_translateEndPos(0),
     m_MarkedTextStart(-1),
     m_MarkedTextEnd(-1),
     m_ReplacingInMarkedText(false)
@@ -1098,6 +1104,7 @@ void CodeViewEditor::contextMenuEvent(QContextMenuEvent *event)
     AddMarkSelectionMenu(menu);
     AddGoToLinkOrStyleContextMenu(menu);
     AddClipContextMenu(menu);
+    AddTranslateContextMenu(menu);
 
     if (m_checkSpelling) {
         AddSpellCheckContextMenu(menu);
@@ -3550,4 +3557,132 @@ void CodeViewEditor::ConnectSignalsToSlots()
     connect(m_addDictMapper, &QSignalMapper::mappedString, this, &CodeViewEditor::addToUserDictionary);
     connect(m_ignoreSpellingMapper, &QSignalMapper::mappedString, this, &CodeViewEditor::ignoreWord);
     connect(m_clipMapper, &QSignalMapper::mappedString, this, &CodeViewEditor::PasteClipEntryFromName);
+    connect(m_translateMapper, &QSignalMapper::mappedString, this, &CodeViewEditor::TranslateBlock);
+    connect(m_translator, &Translator::translationReady, this, &CodeViewEditor::OnTranslationReady);
+    connect(m_translator, &Translator::translationError, this, &CodeViewEditor::OnTranslationError);
+}
+
+void CodeViewEditor::AddTranslateContextMenu(QMenu *menu)
+{
+    QMenu *translateMenu = new QMenu(tr("Translate"), menu);
+
+    QStringList models = m_translator->availableModels();
+    if (models.isEmpty()) {
+        QAction *disabledAction = translateMenu->addAction(tr("No models available"));
+        disabledAction->setEnabled(false);
+    } else {
+        QMenu *enDeMenu = translateMenu->addMenu(tr("English \342\206\222 Deutsch"));
+        QMenu *deEnMenu = translateMenu->addMenu(tr("Deutsch \342\206\222 English"));
+
+        for (const QString &model : models) {
+            QAction *enDeAction = enDeMenu->addAction(model);
+            connect(enDeAction, SIGNAL(triggered()), m_translateMapper, SLOT(map()));
+            m_translateMapper->setMapping(enDeAction, "en\342\206\222de|" + model);
+
+            QAction *deEnAction = deEnMenu->addAction(model);
+            connect(deEnAction, SIGNAL(triggered()), m_translateMapper, SLOT(map()));
+            m_translateMapper->setMapping(deEnAction, "de\342\206\222en|" + model);
+        }
+    }
+
+    // Insert with separator before the standard context menu items
+    QAction *topAction = nullptr;
+    if (!menu->actions().isEmpty()) {
+        topAction = menu->actions().at(0);
+    }
+    menu->insertMenu(topAction, translateMenu);
+    if (topAction) {
+        menu->insertSeparator(topAction);
+    }
+}
+
+CodeViewEditor::BlockInfo CodeViewEditor::FindCurrentBlock()
+{
+    BlockInfo info;
+    info.startPos = -1;
+    info.endPos = -1;
+    info.isValid = false;
+
+    QTextCursor cursor = textCursor();
+    int pos = cursor.position();
+    QString text = toPlainText();
+
+    // Search backward for opening block tag
+    QRegularExpression openTagRegex(
+        "<(p|h[1-6]|li|div|blockquote|td|th|span|dt|dd|pre|figcaption)\\b([^>]*)>",
+        QRegularExpression::CaseInsensitiveOption
+    );
+
+    int bestStart = -1;
+    int bestStartLen = 0;
+    QString bestTag;
+    QString bestAttrs;
+
+    QRegularExpressionMatchIterator it = openTagRegex.globalMatch(text);
+    while (it.hasNext()) {
+        QRegularExpressionMatch match = it.next();
+        if (match.capturedStart() < pos && match.capturedEnd() <= text.length()) {
+            bestStart = match.capturedStart();
+            bestStartLen = match.capturedLength();
+            bestTag = match.captured(1).toLower();
+            bestAttrs = match.captured(2);
+        }
+    }
+
+    if (bestStart == -1) return info;
+
+    // Search forward for matching closing tag
+    QString closeTag = "</" + bestTag + ">";
+    int closePos = text.indexOf(closeTag, bestStart + bestStartLen, Qt::CaseInsensitive);
+    if (closePos == -1) return info;
+
+    info.startPos = bestStart;
+    info.endPos = closePos + closeTag.length();
+    info.tagName = bestTag;
+    info.tagAttributes = bestAttrs;
+
+    // Extract inner content
+    int innerStart = bestStart + bestStartLen;
+    int innerEnd = closePos;
+    if (innerEnd > innerStart) {
+        info.innerContent = text.mid(innerStart, innerEnd - innerStart);
+    } else {
+        info.innerContent = "";
+    }
+
+    info.isValid = true;
+    return info;
+}
+
+void CodeViewEditor::TranslateBlock(const QString &directionAndModel)
+{
+    BlockInfo block = FindCurrentBlock();
+    if (!block.isValid) {
+        return;
+    }
+
+    m_translateStartPos = block.startPos;
+    m_translateEndPos = block.endPos;
+
+    QStringList parts = directionAndModel.split("|");
+    if (parts.size() != 2) return;
+
+    QString direction = parts[0];
+    QString model = parts[1];
+
+    QString fullBlock = toPlainText().mid(block.startPos, block.endPos - block.startPos);
+    m_translator->translate(fullBlock, direction, model);
+}
+
+void CodeViewEditor::OnTranslationReady(const QString &newBlock)
+{
+    QTextCursor cursor = textCursor();
+    cursor.setPosition(m_translateStartPos);
+    cursor.setPosition(m_translateEndPos, QTextCursor::KeepAnchor);
+    cursor.insertText(newBlock);
+}
+
+void CodeViewEditor::OnTranslationError(const QString &message)
+{
+    QMessageBox::warning(this, tr("Translation Error"), message);
 }

@@ -35,6 +35,7 @@
 #include "Misc/PasteTarget.h"
 #include "Misc/SettingsStore.h"
 #include "Misc/Utility.h"
+#include "Misc/Translator.h"
 #include "MiscEditors/ClipEditorModel.h"
 #include "MiscEditors/IndexEditorModel.h"
 #include "ViewEditors/ViewEditor.h"
@@ -527,6 +528,10 @@ private slots:
     void ReformatHTMLToValidAction();
     void ReformatHTMLToValidAllAction();
 
+    void TranslateBlock(const QString &directionAndModel);
+    void OnTranslationReady(const QString &newBlock);
+    void OnTranslationError(const QString &message);
+
 private:
     bool IsMarkedText();
 
@@ -597,6 +602,17 @@ private:
     bool AddSpellCheckContextMenu(QMenu *menu);
 
     void AddViewImageContextMenu(QMenu *menu);
+
+    void AddTranslateContextMenu(QMenu *menu);
+    struct BlockInfo {
+        int startPos;
+        int endPos;
+        QString tagName;
+        QString tagAttributes;
+        QString innerContent;
+        bool isValid;
+    };
+    BlockInfo FindCurrentBlock();
 
     bool CreateMenuEntries(QMenu *parent_menu, QAction *topAction, QStandardItem *item);
 
@@ -808,6 +824,7 @@ private:
     QSignalMapper *m_addDictMapper;
     QSignalMapper *m_ignoreSpellingMapper;
     QSignalMapper *m_clipMapper;
+    QSignalMapper *m_translateMapper;
 
     int m_MarkedTextStart;
     int m_MarkedTextEnd;
@@ -822,6 +839,10 @@ private:
      * Whether spelling highlighting should be reapplied when this tab is next given focus.
      */
     bool m_pendingSpellingHighlighting;
+
+    Translator *m_translator;
+    int m_translateStartPos;
+    int m_translateEndPos;
 };
 
 #endif // CODEVIEWEDITOR_H
