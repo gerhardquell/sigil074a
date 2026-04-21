@@ -142,6 +142,8 @@ set( DIALOG_FILES
     Dialogs/PreferenceWidgets/PreferencesWidget.h
     Dialogs/PreferenceWidgets/SpellCheckWidget.cpp
     Dialogs/PreferenceWidgets/SpellCheckWidget.h
+    Dialogs/PreferenceWidgets/TranslationWidget.cpp
+    Dialogs/PreferenceWidgets/TranslationWidget.h
     Dialogs/RenameTemplate.cpp
     Dialogs/RenameTemplate.h
     Dialogs/Reports.cpp
@@ -240,6 +242,8 @@ set( MISC_FILES
     Misc/SettingsStore.h
     Misc/UserTemplates.cpp
     Misc/UserTemplates.h
+    Misc/Translator.cpp
+    Misc/Translator.h
     Misc/SpellCheck.cpp
     Misc/SpellCheck.h
     Misc/KeyboardShortcut.cpp
@@ -385,6 +389,7 @@ set( UI_FILES
     Form_Files/PCleanSourceWidget.ui
     Form_Files/PLanguageWidget.ui
     Form_Files/PSpellCheckWidget.ui
+    Form_Files/PTranslationWidget.ui
     Form_Files/RenameTemplate.ui 
     Form_Files/Reports.ui
     Form_Files/ReportsAllFilesWidget.ui
