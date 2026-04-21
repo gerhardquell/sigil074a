@@ -7,6 +7,7 @@
 #include <QStringList>
 #include <QMap>
 #include <QNetworkRequest>
+#include <QStandardPaths>
 
 class QNetworkAccessManager;
 class QNetworkReply;
@@ -40,6 +41,8 @@ private:
     QString buildSystemPrompt(const QString &direction);
     QString buildUserPrompt(const QString &text);
     QNetworkRequest createRequest(const QString &endpoint);
+    QStringList loadModelWhitelist() const;
+    void applyWhitelistFilter();
 
     QNetworkAccessManager *m_networkManager;
     QNetworkReply *m_modelsReply;

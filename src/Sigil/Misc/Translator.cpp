@@ -9,6 +9,9 @@
 #include <QRegularExpression>
 #include <QRegularExpressionMatch>
 #include <QRegularExpressionMatchIterator>
+#include <QFile>
+#include <QDir>
+#include <QDebug>
 
 const QStringList Translator::BLOCK_TAGS = QStringList()
     << "p" << "div" << "h1" << "h2" << "h3" << "h4" << "h5" << "h6"
@@ -26,6 +29,7 @@ Translator::Translator(QObject *parent)
     , m_translateReply(nullptr)
     , m_serverUrl(SettingsStore().sigorestServerUrl())
 {
+    qDebug() << "[TRANSLATOR] Constructor: serverUrl=" << m_serverUrl;
 }
 
 Translator::~Translator()
@@ -88,15 +92,23 @@ QStringList Translator::availableModels() const
 
 void Translator::refreshModels()
 {
+    // Re-read server URL in case settings changed
+    m_serverUrl = SettingsStore().sigorestServerUrl();
+
+    qDebug() << "[TRANSLATOR] refreshModels: serverUrl=" << m_serverUrl;
+
     if (m_serverUrl.isEmpty()) {
         emit modelsRefreshed();
         return;
     }
 
     // Abort any ongoing models request
-    if (m_modelsReply && m_modelsReply->isRunning()) {
-        m_modelsReply->abort();
+    if (m_modelsReply) {
+        if (m_modelsReply->isRunning()) {
+            m_modelsReply->abort();
+        }
         m_modelsReply->deleteLater();
+        m_modelsReply = nullptr;
     }
 
     QNetworkRequest request = createRequest("/v1/models");
@@ -120,6 +132,7 @@ void Translator::onModelsReplyFinished()
     m_modelsReply = nullptr;
 
     if (reply->error() != QNetworkReply::NoError) {
+        qDebug() << "[TRANSLATOR] refreshModels error:" << reply->errorString();
         m_cachedModels.clear();
         emit modelsRefreshed();
         reply->deleteLater();
@@ -127,6 +140,8 @@ void Translator::onModelsReplyFinished()
     }
 
     QByteArray responseData = reply->readAll();
+    qDebug() << "[TRANSLATOR] refreshModels response:" << responseData.size() << "bytes";
+
     QJsonDocument doc = QJsonDocument::fromJson(responseData);
 
     if (!doc.isObject()) {
@@ -158,6 +173,11 @@ void Translator::onModelsReplyFinished()
 
     // Sort models alphabetically
     m_cachedModels.sort();
+
+    // Apply whitelist filter if translator_models.json exists
+    applyWhitelistFilter();
+
+    qDebug() << "[TRANSLATOR] refreshModels: found" << m_cachedModels.size() << "models";
 
     emit modelsRefreshed();
 
@@ -282,15 +302,6 @@ QString Translator::encodePlaceholders(const QString &html)
         }
     }
 
-    // Remove block tags (keep their content)
-    for (const QString &tag : BLOCK_TAGS) {
-        QRegularExpression tagPattern(
-            QString("</?%1[^>]*>").arg(QRegularExpression::escape(tag)),
-            QRegularExpression::CaseInsensitiveOption
-        );
-        result.remove(tagPattern);
-    }
-
     return result.trimmed();
 }
 
@@ -321,7 +332,7 @@ QString Translator::decodePlaceholders(const QString &text)
 
         QString fullTag;
         if (m_savedTagAttributes.contains(key)) {
-            fullTag = QString("<%1%2>%3</%1>").arg(tagName, m_savedTagAttributes[key], escapedContent);
+            fullTag = QString("<%1 %2>%3</%1>").arg(tagName, m_savedTagAttributes[key], escapedContent);
         } else {
             fullTag = QString("<%1>%2</%1>").arg(tagName, escapedContent);
         }
@@ -366,6 +377,8 @@ QString Translator::buildSystemPrompt(const QString &direction)
 
     return QString("You are a translation engine. Translate the following text to %1. "
                     "Output only the translated text, no explanations. "
+                    "Preserve all HTML tags (like <p>, <div>, <h1>) exactly as they appear — "
+                    "do not translate, remove, or modify them or their attributes. "
                     "Preserve all markers like <<EM:0>> and <</EM:0>> exactly as they appear — "
                     "do not translate, remove, or modify them.")
         .arg(targetLanguage);
@@ -374,6 +387,65 @@ QString Translator::buildSystemPrompt(const QString &direction)
 QString Translator::buildUserPrompt(const QString &text)
 {
     return text;
+}
+
+QStringList Translator::loadModelWhitelist() const
+{
+    QString dir = QDir::homePath() + "/.sigil";
+    QString path = dir + "/translator_models.json";
+
+    QFile file(path);
+    if (!file.exists()) {
+        return QStringList();
+    }
+
+    if (!file.open(QIODevice::ReadOnly)) {
+        qDebug() << "[TRANSLATOR] Cannot read whitelist:" << path;
+        return QStringList();
+    }
+
+    QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+    file.close();
+
+    if (!doc.isObject()) {
+        qDebug() << "[TRANSLATOR] Invalid whitelist format";
+        return QStringList();
+    }
+
+    QJsonObject root = doc.object();
+    if (!root.contains("models") || !root["models"].isArray()) {
+        qDebug() << "[TRANSLATOR] Whitelist missing 'models' array";
+        return QStringList();
+    }
+
+    QStringList whitelist;
+    QJsonArray arr = root["models"].toArray();
+    for (const QJsonValue &v : arr) {
+        if (v.isString()) {
+            whitelist.append(v.toString());
+        }
+    }
+
+    qDebug() << "[TRANSLATOR] Whitelist loaded:" << whitelist.size() << "models from" << path;
+    return whitelist;
+}
+
+void Translator::applyWhitelistFilter()
+{
+    QStringList whitelist = loadModelWhitelist();
+    if (whitelist.isEmpty()) {
+        return;
+    }
+
+    QStringList filtered;
+    for (const QString &model : m_cachedModels) {
+        if (whitelist.contains(model)) {
+            filtered.append(model);
+        }
+    }
+
+    qDebug() << "[TRANSLATOR] Whitelist filter:" << m_cachedModels.size() << "->" << filtered.size() << "models";
+    m_cachedModels = filtered;
 }
 
 QNetworkRequest Translator::createRequest(const QString &endpoint)
