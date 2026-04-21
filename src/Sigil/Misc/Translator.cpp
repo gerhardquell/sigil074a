@@ -24,7 +24,7 @@ Translator::Translator(QObject *parent)
     , m_networkManager(new QNetworkAccessManager(this))
     , m_modelsReply(nullptr)
     , m_translateReply(nullptr)
-    , m_serverUrl(SettingsStore::sigorestServerUrl())
+    , m_serverUrl(SettingsStore().sigorestServerUrl())
 {
 }
 
