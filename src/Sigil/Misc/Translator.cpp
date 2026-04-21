@@ -235,7 +235,6 @@ QString Translator::encodePlaceholders(const QString &html)
 
     // Process inline tags with attributes
     for (const QString &tag : INLINE_TAGS) {
-        // Pattern to match tags with or without attributes
         QRegularExpression openingTagPattern(
             QString("<%1([^>]*)>").arg(QRegularExpression::escape(tag)),
             QRegularExpression::CaseInsensitiveOption
@@ -255,7 +254,6 @@ QString Translator::encodePlaceholders(const QString &html)
             int openingStart = openingMatch.capturedStart();
             QString attributes = openingMatch.captured(1).trimmed();
 
-            // Find matching closing tag
             int searchStart = openingMatch.capturedEnd();
             QRegularExpressionMatch closingMatch = closingTagPattern.match(result, searchStart);
             if (!closingMatch.hasMatch()) {
@@ -263,25 +261,19 @@ QString Translator::encodePlaceholders(const QString &html)
                 continue;
             }
 
-            int closingStart = closingMatch.capturedStart();
             int closingEnd = closingMatch.capturedEnd();
+            QString content = result.mid(openingMatch.capturedEnd(), closingMatch.capturedStart() - openingMatch.capturedEnd());
 
-            // Extract content between tags
-            QString content = result.mid(openingMatch.capturedEnd(), closingStart - openingMatch.capturedEnd());
-
-            // Save attributes if present
             QString key = QString("%1_%2").arg(placeholderIndex).arg(tag.toUpper());
             if (!attributes.isEmpty()) {
                 m_savedTagAttributes[key] = attributes;
             }
 
-            // Replace with placeholder
-            QString placeholder = QString("%1_%2%3%4%5")
-                .arg(placeholderIndex)
+            // Format: <<TAG:0>>content<</TAG:0>>
+            QString placeholder = QString("<<%1:%2>>%3<</%1:%2>>")
                 .arg(tag.toUpper())
-                .arg("\342\210\247")  // ⟦
-                .arg(content)
-                .arg("\342\210\247");  // ⟧
+                .arg(placeholderIndex)
+                .arg(content);
 
             result.replace(openingStart, closingEnd - openingStart, placeholder);
             placeholderIndex++;
@@ -290,7 +282,7 @@ QString Translator::encodePlaceholders(const QString &html)
         }
     }
 
-    // Remove remaining non-inline tags (block tags)
+    // Remove block tags (keep their content)
     for (const QString &tag : BLOCK_TAGS) {
         QRegularExpression tagPattern(
             QString("</?%1[^>]*>").arg(QRegularExpression::escape(tag)),
@@ -299,47 +291,37 @@ QString Translator::encodePlaceholders(const QString &html)
         result.remove(tagPattern);
     }
 
-    return result;
+    return result.trimmed();
 }
 
 QString Translator::decodePlaceholders(const QString &text)
 {
     QString result = text;
 
-    // Pattern to match placeholders: 0_TAG⟦content⟧TAG
+    // Pattern: <<TAG:0>>content<</TAG:0>>
     QRegularExpression placeholderPattern(
-        "(\\d+)_(EM|STRONG|B|I|U|A|SPAN|SUB|SUP|CODE|SMALL|MARK|ABBR|CITE|Q)"
-        "\342\210\247"  // ⟦
-        "([^\\342\210\247]*)"  // content (anything except ⟦)
-        "\342\210\247"  // ⟧
-        "\\1_\\2",
-        QRegularExpression::CaseInsensitiveOption
+        "<<(EM|STRONG|B|I|U|A|SPAN|SUB|SUP|CODE|SMALL|MARK|ABBR|CITE|Q):(\\d+)>>(.*?)<</\\1:\\2>>",
+        QRegularExpression::CaseInsensitiveOption | QRegularExpression::DotMatchesEverythingOption
     );
 
     QRegularExpressionMatchIterator it = placeholderPattern.globalMatch(result);
-    QStringList replacements;
     QList<QRegularExpressionMatch> matches;
-
     while (it.hasNext()) {
-        QRegularExpressionMatch match = it.next();
-        matches.append(match);
+        matches.append(it.next());
     }
 
-    // Process in reverse order to maintain positions
     for (int i = matches.size() - 1; i >= 0; i--) {
-        QRegularExpressionMatch match = matches[i];
-        int index = match.captured(1).toInt();
-        QString tagName = match.captured(2).toLower();
+        const QRegularExpressionMatch &match = matches[i];
+        QString tagName = match.captured(1).toLower();
+        int index = match.captured(2).toInt();
         QString content = match.captured(3);
         QString key = QString("%1_%2").arg(index).arg(tagName.toUpper());
 
-        // Escape HTML in content
         QString escapedContent = escapeHtml(content);
 
-        // Build tag with attributes if saved
         QString fullTag;
         if (m_savedTagAttributes.contains(key)) {
-            fullTag = QString("<%1 %2>%3</%1>").arg(tagName, m_savedTagAttributes[key], escapedContent);
+            fullTag = QString("<%1%2>%3</%1>").arg(tagName, m_savedTagAttributes[key], escapedContent);
         } else {
             fullTag = QString("<%1>%2</%1>").arg(tagName, escapedContent);
         }
@@ -384,8 +366,8 @@ QString Translator::buildSystemPrompt(const QString &direction)
 
     return QString("You are a translation engine. Translate the following text to %1. "
                     "Output only the translated text, no explanations. "
-                    "Preserve all numeric placeholders like 0_EM and the markers \342\210\247 and \342\210\247 "
-                    "exactly as they appear — do not translate, remove, or modify them.")
+                    "Preserve all markers like <<EM:0>> and <</EM:0>> exactly as they appear — "
+                    "do not translate, remove, or modify them.")
         .arg(targetLanguage);
 }
 
