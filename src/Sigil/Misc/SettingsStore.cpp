@@ -79,6 +79,7 @@ static const QString KEY_PREVIEW_ENABLED = "Preview/enabled";
 static const QString KEY_PREVIEW_ORIENTATION = "Preview/orientation";
 static const QString KEY_PREVIEW_DEBOUNCE = "Preview/debounceMs";
 static const QString KEY_PREVIEW_SYNC_CURSOR = "Preview/syncCursor";
+static const QString KEY_SIGOREST_SERVER_URL = "Translation/sigorest_server_url";
 
 
 SettingsStore::SettingsStore()
@@ -452,4 +453,16 @@ void SettingsStore::setPreviewSyncCursor(bool sync)
 {
     clearSettingsGroup();
     setValue(KEY_PREVIEW_SYNC_CURSOR, sync);
+}
+
+QString SettingsStore::sigorestServerUrl()
+{
+    clearSettingsGroup();
+    return value(KEY_SIGOREST_SERVER_URL, "http://localhost:9080").toString();
+}
+
+void SettingsStore::setSigorestServerUrl(const QString &url)
+{
+    clearSettingsGroup();
+    setValue(KEY_SIGOREST_SERVER_URL, url);
 }

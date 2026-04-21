@@ -201,6 +201,9 @@ public:
     bool previewSyncCursor();
     void setPreviewSyncCursor(bool sync);
 
+    QString sigorestServerUrl();
+    void setSigorestServerUrl(const QString &url);
+
 public slots:
 
     /**
