@@ -3678,12 +3678,18 @@ void CodeViewEditor::TranslateBlock(const QString &directionAndModel)
     QString direction = parts[0];
     QString model = parts[1];
 
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+    emit ShowStatusMessageRequest(tr("Translating with %1...").arg(model));
+
     QString fullBlock = toPlainText().mid(block.startPos, block.endPos - block.startPos);
     m_translator->translate(fullBlock, direction, model);
 }
 
 void CodeViewEditor::OnTranslationReady(const QString &newBlock)
 {
+    QApplication::restoreOverrideCursor();
+    emit ShowStatusMessageRequest(tr("Translation complete"));
+
     QTextCursor cursor = textCursor();
     cursor.setPosition(m_translateStartPos);
     cursor.setPosition(m_translateEndPos, QTextCursor::KeepAnchor);
@@ -3692,5 +3698,8 @@ void CodeViewEditor::OnTranslationReady(const QString &newBlock)
 
 void CodeViewEditor::OnTranslationError(const QString &message)
 {
+    QApplication::restoreOverrideCursor();
+    emit ShowStatusMessageRequest(tr("Translation failed"));
+
     QMessageBox::warning(this, tr("Translation Error"), message);
 }
