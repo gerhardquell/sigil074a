@@ -34,6 +34,7 @@
 #include <QSplitter>
 #include <QFileInfo>
 #include <QDir>
+#include <QSet>
 
 #include "BookManipulation/CleanSource.h"
 #include "MiscEditors/ClipEditorModel.h"
@@ -68,7 +69,8 @@ FlowTab::FlowTab(HTMLResource &resource,
     m_PreviewWidget(nullptr),
     m_WellFormedCheckComponent(*new WellFormedCheckComponent(*this, parent)),
     m_initialLoad(true),
-    m_grabFocus(grab_focus)
+    m_grabFocus(grab_focus),
+    m_cursorSyncTimer(nullptr)
 {
     // Loading a flow tab can take a while. We set the wait
     // cursor and clear it at the end of the delayed initialization.
@@ -88,6 +90,12 @@ FlowTab::FlowTab(HTMLResource &resource,
     setFocusProxy(m_CodeViewEditor);
     ConnectSignalsToSlots();
 
+    // Cursor sync debounce timer (200ms)
+    m_cursorSyncTimer = new QTimer(this);
+    m_cursorSyncTimer->setSingleShot(true);
+    m_cursorSyncTimer->setInterval(200);
+    connect(m_cursorSyncTimer, &QTimer::timeout, this, &FlowTab::syncPreviewToCursor);
+
     // We perform delayed initialization after the widget is on
     // the screen. This way, the user perceives less load time.
     QTimer::singleShot(0, this, SLOT(DelayedInitialization()));
@@ -95,6 +103,10 @@ FlowTab::FlowTab(HTMLResource &resource,
 
 FlowTab::~FlowTab()
 {
+    // Stop cursor sync timer before disconnecting
+    if (m_cursorSyncTimer) {
+        m_cursorSyncTimer->stop();
+    }
     // Disconnect CodeViewEditor signals before destroying to prevent
     // updatePreview being called during destruction
     if (m_CodeViewEditor) {
@@ -284,6 +296,72 @@ void FlowTab::onCodeViewTextChanged()
 void FlowTab::onCursorPositionChanged()
 {
     EmitUpdateCursorPosition();
+    if (m_cursorSyncTimer) {
+        m_cursorSyncTimer->start();
+    }
+}
+
+void FlowTab::syncPreviewToCursor()
+{
+    if (!m_CodeViewEditor || !m_PreviewWidget || !m_PreviewWidget->isVisible() || m_PreviewWidget->width() < 10) {
+        return;
+    }
+
+    QList< ViewEditor::ElementIndex > hierarchy = m_CodeViewEditor->GetCaretLocation();
+    QString selector = ElementIndexToCssSelector(hierarchy);
+
+    if (selector.isEmpty()) {
+        return;
+    }
+
+    m_PreviewWidget->scrollToCaretElement(selector);
+}
+
+QString FlowTab::ElementIndexToCssSelector(const QList< ViewEditor::ElementIndex > &hierarchy) const
+{
+    static const QSet<QString> blockElements = QSet<QString>()
+        << "p" << "div" << "h1" << "h2" << "h3" << "h4" << "h5" << "h6"
+        << "blockquote" << "ul" << "ol" << "li" << "table" << "section"
+        << "article" << "header" << "footer" << "aside" << "nav"
+        << "figure" << "figcaption" << "dl" << "pre" << "hr" << "address"
+        << "main" << "details" << "summary";
+
+    auto sanitizeName = [](const QString &name) -> QString {
+        int colonPos = name.indexOf(':');
+        return colonPos >= 0 ? name.mid(colonPos + 1) : name;
+    };
+
+    // Skip html, body — too high-level for useful scrolling
+    // Walk from leaf to root, find deepest block-level element
+    int blockIndex = -1;
+    for (int i = hierarchy.size() - 1; i >= 0; --i) {
+        if (blockElements.contains(sanitizeName(hierarchy[i].name))) {
+            blockIndex = i;
+            break;
+        }
+    }
+
+    if (blockIndex < 0) {
+        return QString();
+    }
+
+    const ViewEditor::ElementIndex &block = hierarchy[blockIndex];
+    QString blockName = sanitizeName(block.name);
+    // ElementIndex.index is 0-based child position among all siblings, :nth-child is 1-based
+    QString selector = QString("%1:nth-child(%2)")
+                           .arg(blockName)
+                           .arg(block.index + 1);
+
+    // If there's an inline child after the block, append it for precision
+    if (blockIndex + 1 < hierarchy.size()) {
+        const ViewEditor::ElementIndex &child = hierarchy[blockIndex + 1];
+        QString childName = sanitizeName(child.name);
+        selector += QString(" > %1:nth-child(%2)")
+                        .arg(childName)
+                        .arg(child.index + 1);
+    }
+
+    return selector;
 }
 
 void FlowTab::updatePreview()

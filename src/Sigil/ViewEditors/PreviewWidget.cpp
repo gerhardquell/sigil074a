@@ -36,7 +36,8 @@ PreviewWidget::PreviewWidget(QWidget *parent)
     : QWidget(parent),
       m_webView(nullptr),
       m_updateTimer(nullptr),
-      m_isLoading(false)
+      m_isLoading(false),
+      m_pendingCaretSelector()
 {
     setupUi();
     connectSignals();
@@ -142,6 +143,27 @@ void PreviewWidget::scrollToElement(const QString &elementId)
     m_webView->page()->runJavaScript(js);
 }
 
+void PreviewWidget::scrollToCaretElement(const QString &cssSelector)
+{
+    if (cssSelector.isEmpty()) {
+        return;
+    }
+
+    if (m_isLoading) {
+        m_pendingCaretSelector = cssSelector;
+        return;
+    }
+
+    QString js = QString(
+        "var element = document.querySelector('%1');"
+        "if (element) {"
+        "    element.scrollIntoView({behavior: 'instant', block: 'center'});"
+        "}"
+    ).arg(cssSelector);
+
+    m_webView->page()->runJavaScript(js);
+}
+
 QWebEngineView *PreviewWidget::webView() const
 {
     return m_webView;
@@ -151,6 +173,11 @@ void PreviewWidget::onLoadFinished(bool ok)
 {
     m_isLoading = false;
     emit loadFinished(ok);
+
+    if (ok && !m_pendingCaretSelector.isEmpty()) {
+        scrollToCaretElement(m_pendingCaretSelector);
+        m_pendingCaretSelector.clear();
+    }
 }
 
 void PreviewWidget::setupUrlHandler(const QString &basePath)

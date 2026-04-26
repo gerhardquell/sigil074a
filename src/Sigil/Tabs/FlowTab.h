@@ -324,6 +324,7 @@ private slots:
 
     void onCodeViewTextChanged();
     void onCursorPositionChanged();
+    void syncPreviewToCursor();
     void updatePreview();
 
     /**
@@ -353,6 +354,8 @@ private:
      * Connects all the required signals to their respective slots.
      */
     void ConnectSignalsToSlots();
+
+    QString ElementIndexToCssSelector(const QList< ViewEditor::ElementIndex > &hierarchy) const;
 
 
     ///////////////////////////////
@@ -404,6 +407,8 @@ private:
     bool m_initialLoad;
 
     bool m_grabFocus;
+
+    QTimer *m_cursorSyncTimer;
 };
 
 #endif // FLOWTAB_H

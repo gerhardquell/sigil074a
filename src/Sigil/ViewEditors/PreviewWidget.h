@@ -48,6 +48,7 @@ public:
     void setHtml(const QString &html, const QUrl &baseUrl = QUrl());
     void scheduleUpdate(const QString &html, const QUrl &baseUrl = QUrl());
     void scrollToElement(const QString &elementId);
+    void scrollToCaretElement(const QString &cssSelector);
     QWebEngineView *webView() const;
 
     void setupUrlHandler(const QString &basePath);
@@ -73,6 +74,7 @@ private:
     QString m_pendingHtml;
     QUrl m_pendingBaseUrl;
     bool m_isLoading;
+    QString m_pendingCaretSelector;
     QString m_basePath;
 };
 
