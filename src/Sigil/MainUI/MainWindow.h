@@ -211,7 +211,7 @@ signals:
 protected:
     void showEvent(QShowEvent *event);
     /**
-     * Workaround for Qt 4.8 bug, which does not save/restore window state
+     * Workaround for legacy Qt bug, which does not save/restore window state
      * correctly if maximized at the time of calling saveGeometry().
      */
     void moveEvent(QMoveEvent *event);
@@ -946,7 +946,7 @@ private:
     bool m_ZoomPreview;
 
     /**
-     * Workaround for Qt 4.8 bug, to track the last known window size when not maximized.
+     * Workaround for legacy Qt bug, to track the last known window size when not maximized.
      */
     QByteArray m_LastWindowSize;
 

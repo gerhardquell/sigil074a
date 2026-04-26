@@ -432,7 +432,7 @@ void MainWindow::showEvent(QShowEvent *event)
 
 void MainWindow::moveEvent(QMoveEvent *event)
 {
-    // Workaround for Qt 4.8 bug - see WriteSettings() for details.
+    // Workaround for legacy Qt bug - see WriteSettings() for details.
     if (!isMaximized()) {
         m_LastWindowSize = saveGeometry();
     }
@@ -442,7 +442,7 @@ void MainWindow::moveEvent(QMoveEvent *event)
 
 void MainWindow::resizeEvent(QResizeEvent *event)
 {
-    // Workaround for Qt 4.8 bug - see WriteSettings() for details.
+    // Workaround for legacy Qt bug - see WriteSettings() for details.
     if (!isMaximized()) {
         m_LastWindowSize = saveGeometry();
     }
@@ -3611,7 +3611,7 @@ void MainWindow::PlatformSpecificTweaks()
     foreach(QToolBar * toolbar, all_toolbars) {
         toolbar->setIconSize(QSize(32, 32));
     }
-    // Set the action because they are not automatically put in the right place as of Qt 5.1.
+    // Set the menu role explicitly for macOS menu placement.
     ui.actionAbout->setMenuRole(QAction::AboutRole);
     ui.actionPreferences->setMenuRole(QAction::PreferencesRole);
 #endif

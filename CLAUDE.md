@@ -13,12 +13,13 @@
 ## Tech Stack
 
 - **Sprache:** C++ (C++11-fähig)
-- **Framework:** Qt 5.2 (QtWidgets, QtCore)
+- **Framework:** Qt 6.9 (QtWidgets, QtCore, QtWebEngine)
 - **Build-System:** CMake 2.8+
 - **XML-Verarbeitung:** Apache Xerces-C++ 3.1+
 - **Reguläre Ausdrücke:** PCRE
 - **Rechtschreibprüfung:** Hunspell
 - **Kompression:** zlib + minizip
+- **Web-Engine:** QtWebEngine (Chromium-basiert)
 
 ---
 
@@ -125,6 +126,6 @@ Hierarchie:
 ## Notizen
 
 - Version 0.7.4 aus 2013
-- Qt 5.2 als minimale Version
+- Qt 6.9 (migriert von Qt 5.2)
 - FlightCrew für EPUB-Validierung integriert
 - Plattform-spezifische Workarounds für Windows (Clipboard) und macOS (Menüs)

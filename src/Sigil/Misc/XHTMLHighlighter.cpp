@@ -433,7 +433,7 @@ void XHTMLHighlighter::CheckSpelling(const QString &text)
 {
     QTextCharFormat format;
     format.setUnderlineColor(m_codeViewAppearance.spelling_underline_color);
-    // QTextCharFormat::SpellCheckUnderline has issues with Qt 5. It only displays
+    // QTextCharFormat::SpellCheckUnderline has display issues at some zoom levels.
     // at some zoom levels and often doesn't display at all. So we're using wave
     // underline since it's good enough for most people.
     format.setUnderlineStyle(QTextCharFormat::WaveUnderline);

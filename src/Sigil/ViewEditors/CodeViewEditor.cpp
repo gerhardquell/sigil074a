@@ -2301,10 +2301,7 @@ bool CodeViewEditor::ExecuteCaretUpdate(bool default_to_top)
     cursor.movePosition(QTextCursor::NextBlock, QTextCursor::MoveAnchor, vertical_lines_move - 1);
 
     for (int i = 1 ; i < horizontal_chars_move ; i++) {
-        cursor.movePosition(QTextCursor::NextCharacter , QTextCursor::MoveAnchor);
-        // TODO: cursor.movePosition( QTextCursor::Left, ...) is badly bugged in Qt 4.7.
-        // Test whether it's fixed when the next version of Qt comes out.
-        // cursor.movePosition( QTextCursor::Left, QTextCursor::MoveAnchor, horizontal_chars_move );
+        cursor.movePosition(QTextCursor::NextCharacter, QTextCursor::MoveAnchor);
     }
 
     m_CaretUpdate.clear();
