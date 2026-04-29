@@ -296,9 +296,6 @@ void FlowTab::onCodeViewTextChanged()
 void FlowTab::onCursorPositionChanged()
 {
     EmitUpdateCursorPosition();
-    if (m_cursorSyncTimer) {
-        m_cursorSyncTimer->start();
-    }
 }
 
 void FlowTab::syncPreviewToCursor()

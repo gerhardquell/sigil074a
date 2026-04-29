@@ -532,6 +532,9 @@ private slots:
     void OnTranslationReady(const QString &newBlock);
     void OnTranslationError(const QString &message);
 
+    void WrapSelectionWithP();
+    void WrapSelectionWithPreCode();
+
 private:
     bool IsMarkedText();
 
@@ -604,6 +607,8 @@ private:
     void AddViewImageContextMenu(QMenu *menu);
 
     void AddTranslateContextMenu(QMenu *menu);
+
+    void AddWrapTagsContextMenu(QMenu *menu);
     struct BlockInfo {
         int startPos;
         int endPos;

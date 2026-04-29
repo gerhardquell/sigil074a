@@ -1105,6 +1105,7 @@ void CodeViewEditor::contextMenuEvent(QContextMenuEvent *event)
     AddGoToLinkOrStyleContextMenu(menu);
     AddClipContextMenu(menu);
     AddTranslateContextMenu(menu);
+    AddWrapTagsContextMenu(menu);
 
     if (m_checkSpelling) {
         AddSpellCheckContextMenu(menu);
@@ -3599,6 +3600,71 @@ void CodeViewEditor::AddTranslateContextMenu(QMenu *menu)
     if (topAction) {
         menu->insertSeparator(topAction);
     }
+}
+
+void CodeViewEditor::AddWrapTagsContextMenu(QMenu *menu)
+{
+    QMenu *wrapMenu = new QMenu(tr("Wrap Selection"), menu);
+
+    QAction *wrapPAction = wrapMenu->addAction(tr("with <p>…</p>"));
+    connect(wrapPAction, &QAction::triggered, this, &CodeViewEditor::WrapSelectionWithP);
+
+    QAction *wrapPreCodeAction = wrapMenu->addAction(tr("with <pre><code>…</pre></code>"));
+    connect(wrapPreCodeAction, &QAction::triggered, this, &CodeViewEditor::WrapSelectionWithPreCode);
+
+    // Insert after Translate menu (which was inserted at top)
+    QList<QAction *> actions = menu->actions();
+    QAction *afterAction = nullptr;
+    for (QAction *act : actions) {
+        if (act->menu() && act->menu()->title() == tr("Translate")) {
+            afterAction = act;
+            break;
+        }
+    }
+    if (afterAction) {
+        menu->insertMenu(menu->actions().at(menu->actions().indexOf(afterAction) + 1), wrapMenu);
+    } else {
+        QAction *topAction = nullptr;
+        if (!menu->actions().isEmpty()) {
+            topAction = menu->actions().at(0);
+        }
+        menu->insertMenu(topAction, wrapMenu);
+    }
+}
+
+void CodeViewEditor::WrapSelectionWithP()
+{
+    QTextCursor cursor = textCursor();
+    if (!cursor.hasSelection()) {
+        return;
+    }
+    int start = cursor.selectionStart();
+    int end = cursor.selectionEnd();
+    QString selected = cursor.selectedText();
+    // Qt uses Unicode line separator U+2029 for newlines in selectedText()
+    QString wrapped = "<p>" + selected + "</p>";
+    cursor.insertText(wrapped);
+    // Re-select the original content inside the tags
+    cursor.setPosition(start);
+    cursor.setPosition(start + 3 + selected.length(), QTextCursor::KeepAnchor);
+    setTextCursor(cursor);
+}
+
+void CodeViewEditor::WrapSelectionWithPreCode()
+{
+    QTextCursor cursor = textCursor();
+    if (!cursor.hasSelection()) {
+        return;
+    }
+    int start = cursor.selectionStart();
+    int end = cursor.selectionEnd();
+    QString selected = cursor.selectedText();
+    QString wrapped = "<pre><code>" + selected + "</code></pre>";
+    cursor.insertText(wrapped);
+    // Re-select the original content inside the tags
+    cursor.setPosition(start);
+    cursor.setPosition(start + 12 + selected.length(), QTextCursor::KeepAnchor);
+    setTextCursor(cursor);
 }
 
 CodeViewEditor::BlockInfo CodeViewEditor::FindCurrentBlock()

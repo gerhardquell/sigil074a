@@ -4,3 +4,9 @@ Start: Fr 17. Apr 10:58:27 CEST 2026
 Ende: Fr 17. Apr 12:19:04 CEST 2026
 Start: Fr 17. Apr 13:44:03 CEST 2026
 Start: Di 21. Apr 16:13:56 CEST 2026
+Ende: Di 21. Apr 19:03:07 CEST 2026
+Start: Mi 22. Apr 14:19:08 CEST 2026
+Ende: Mi 22. Apr 15:46:24 CEST 2026
+Start: So 26. Apr 15:48:47 CEST 2026
+Ende: So 26. Apr 18:20:21 CEST 2026
+Start: Mi 29. Apr 16:07:40 CEST 2026
