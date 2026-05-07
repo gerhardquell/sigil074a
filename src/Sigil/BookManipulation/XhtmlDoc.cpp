@@ -422,10 +422,12 @@ QString XhtmlDoc::GetDomNodeAsString(const xc::DOMNode &node)
 QString XhtmlDoc::GetDomDocumentAsString(const xc::DOMDocument &document)
 {
     QString raw_source = GetDomNodeAsString(document);
-    QRegularExpression encoding(ENCODING_ATTRIBUTE);
+    QRegularExpression encoding("encoding\\s*=\\s*\"[^\"]*\"");
     QRegularExpressionMatch match = encoding.match(raw_source);
-    int encoding_start = match.capturedStart();
-    return raw_source.replace(encoding_start, match.capturedLength(), "encoding=\"UTF-8\"");
+    raw_source.replace(match.capturedStart(), match.capturedLength(), "encoding=\"UTF-8\"");
+    raw_source.replace(QRegularExpression("\\s+standalone=\"no\""), "");
+    raw_source.replace("<title/>", "<title></title>");
+    return raw_source;
 }
 
 
