@@ -533,6 +533,8 @@ private slots:
     void OnTranslationError(const QString &message);
 
     void WrapSelectionWithP();
+    void WrapSelectionWithH2();
+    void WrapSelectionWithLi();
     void WrapSelectionWithPreCode();
 
 private:

@@ -129,3 +129,7 @@ Hierarchie:
 - Qt 6.9 (migriert von Qt 5.2)
 - FlightCrew für EPUB-Validierung integriert
 - Plattform-spezifische Workarounds für Windows (Clipboard) und macOS (Menüs)
+
+## Aktionen
+
+lies ToDo.md für neue Arbeiten

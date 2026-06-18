@@ -3612,6 +3612,13 @@ void CodeViewEditor::AddWrapTagsContextMenu(QMenu *menu)
     QAction *wrapPreCodeAction = wrapMenu->addAction(tr("with <pre><code>…</pre></code>"));
     connect(wrapPreCodeAction, &QAction::triggered, this, &CodeViewEditor::WrapSelectionWithPreCode);
 
+    QAction *wrapH2Action = wrapMenu->addAction(tr("with <h2>…</h2>"));
+    connect(wrapH2Action, &QAction::triggered, this, &CodeViewEditor::WrapSelectionWithH2);
+
+    QAction *wrapLiAction = wrapMenu->addAction(tr("with <li>…</li>"));
+    connect(wrapLiAction, &QAction::triggered, this, &CodeViewEditor::WrapSelectionWithLi);
+
+
     // Insert after Translate menu (which was inserted at top)
     QList<QAction *> actions = menu->actions();
     QAction *afterAction = nullptr;
@@ -3631,6 +3638,49 @@ void CodeViewEditor::AddWrapTagsContextMenu(QMenu *menu)
         menu->insertMenu(topAction, wrapMenu);
     }
 }
+
+/*********************************************************************************************/
+/* Änderungen:
+ * Autor: Gerhard Quell
+ * Datum: 20260510
+ * Descr: Einfügung von H2 und Anpassung <pre><code>
+ */
+void CodeViewEditor::WrapSelectionWithLi()
+{
+    QTextCursor cursor = textCursor();
+    if (!cursor.hasSelection()) {
+        return;
+    }
+    int start = cursor.selectionStart();
+    int end = cursor.selectionEnd();
+    QString selected = cursor.selectedText();
+    // Qt uses Unicode line separator U+2029 for newlines in selectedText()
+    QString wrapped = "<li>" + selected + "</li>\n";
+    cursor.insertText(wrapped);
+    // Re-select the original content inside the tags
+    cursor.setPosition(start);
+    cursor.setPosition(start + 3 + selected.length(), QTextCursor::KeepAnchor);
+    setTextCursor(cursor);
+}
+
+void CodeViewEditor::WrapSelectionWithH2()
+{
+    QTextCursor cursor = textCursor();
+    if (!cursor.hasSelection()) {
+        return;
+    }
+    int start = cursor.selectionStart();
+    int end = cursor.selectionEnd();
+    QString selected = cursor.selectedText();
+    // Qt uses Unicode line separator U+2029 for newlines in selectedText()
+    QString wrapped = "\n<h2>" + selected + "</h2>\n";
+    cursor.insertText(wrapped);
+    // Re-select the original content inside the tags
+    cursor.setPosition(start);
+    cursor.setPosition(start + 3 + selected.length(), QTextCursor::KeepAnchor);
+    setTextCursor(cursor);
+}
+
 
 void CodeViewEditor::WrapSelectionWithP()
 {
@@ -3659,7 +3709,7 @@ void CodeViewEditor::WrapSelectionWithPreCode()
     int start = cursor.selectionStart();
     int end = cursor.selectionEnd();
     QString selected = cursor.selectedText();
-    QString wrapped = "<pre><code>" + selected + "</code></pre>";
+    QString wrapped = "<pre><code>\n" + selected + "\n </code></pre>";
     cursor.insertText(wrapped);
     // Re-select the original content inside the tags
     cursor.setPosition(start);
