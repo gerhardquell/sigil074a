@@ -12,3 +12,11 @@ cmake_install.cmake
 Makefile
 !sigil-md-workflow/Makefile
 *.epub
+
+# Externe Projekte / Tools (eigene Repos, nicht Teil von Sigil)
+sigoREST
+pdf_to_md/
+
+# Beispieldateien (PDFs, XHTML-Samples)
+docs/Emacs*.pdf
+docs/Section*.xhtml
