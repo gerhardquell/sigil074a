@@ -111,6 +111,11 @@ CodeViewEditor::CodeViewEditor(HighlighterType high_type, bool check_spelling, Q
     m_translator(new Translator(this)),
     m_translateStartPos(0),
     m_translateEndPos(0),
+    m_translateAllMode(false),
+    m_translateAllDirection(QString()),
+    m_translateAllModel(QString()),
+    m_translateAllNextStartPos(0),
+    m_translateAllCount(0),
     m_MarkedTextStart(-1),
     m_MarkedTextEnd(-1),
     m_ReplacingInMarkedText(false)
@@ -3579,6 +3584,8 @@ void CodeViewEditor::AddTranslateContextMenu(QMenu *menu)
     } else {
         QMenu *enDeMenu = translateMenu->addMenu(tr("English \342\206\222 Deutsch"));
         QMenu *deEnMenu = translateMenu->addMenu(tr("Deutsch \342\206\222 English"));
+        QMenu *allPEnDeMenu = translateMenu->addMenu(tr("<p> English \342\206\222 Deutsch"));
+        QMenu *allPDeEnMenu = translateMenu->addMenu(tr("<p> Deutsch \342\206\222 English"));
 
         for (const QString &model : models) {
             QAction *enDeAction = enDeMenu->addAction(model);
@@ -3588,6 +3595,14 @@ void CodeViewEditor::AddTranslateContextMenu(QMenu *menu)
             QAction *deEnAction = deEnMenu->addAction(model);
             connect(deEnAction, SIGNAL(triggered()), m_translateMapper, SLOT(map()));
             m_translateMapper->setMapping(deEnAction, "de\342\206\222en|" + model);
+
+            QAction *allPEnDeAction = allPEnDeMenu->addAction(model);
+            connect(allPEnDeAction, SIGNAL(triggered()), m_translateMapper, SLOT(map()));
+            m_translateMapper->setMapping(allPEnDeAction, "all:en\342\206\222de|" + model);
+
+            QAction *allPDeEnAction = allPDeEnMenu->addAction(model);
+            connect(allPDeEnAction, SIGNAL(triggered()), m_translateMapper, SLOT(map()));
+            m_translateMapper->setMapping(allPDeEnAction, "all:de\342\206\222en|" + model);
         }
     }
 
@@ -3775,8 +3790,80 @@ CodeViewEditor::BlockInfo CodeViewEditor::FindCurrentBlock()
     return info;
 }
 
+CodeViewEditor::BlockInfo CodeViewEditor::FindNextBlock(int startPos, const QStringList &tagNames)
+{
+    BlockInfo info;
+    info.startPos = -1;
+    info.endPos = -1;
+    info.isValid = false;
+
+    QString text = toPlainText();
+
+    int bestStart = -1;
+    int bestStartLen = 0;
+    QString bestTag;
+    QString bestAttrs;
+
+    for (const QString &tag : tagNames) {
+        QRegularExpression openTagRegex(
+            QString("<%1\\b([^>]*)>").arg(QRegularExpression::escape(tag)),
+            QRegularExpression::CaseInsensitiveOption
+        );
+
+        QRegularExpressionMatchIterator it = openTagRegex.globalMatch(text);
+        while (it.hasNext()) {
+            QRegularExpressionMatch match = it.next();
+            if (match.capturedStart() >= startPos) {
+                if (bestStart == -1 || match.capturedStart() < bestStart) {
+                    bestStart = match.capturedStart();
+                    bestStartLen = match.capturedLength();
+                    bestTag = tag;
+                    bestAttrs = match.captured(1);
+                }
+            }
+        }
+    }
+
+    if (bestStart == -1) {
+        return info;
+    }
+
+    QString closeTag = "</" + bestTag + ">";
+    int closePos = text.indexOf(closeTag, bestStart + bestStartLen, Qt::CaseInsensitive);
+    if (closePos == -1) {
+        return info;
+    }
+
+    info.startPos = bestStart;
+    info.endPos = closePos + closeTag.length();
+    info.tagName = bestTag;
+    info.tagAttributes = bestAttrs;
+
+    int innerStart = bestStart + bestStartLen;
+    int innerEnd = closePos;
+    if (innerEnd > innerStart) {
+        info.innerContent = text.mid(innerStart, innerEnd - innerStart);
+    } else {
+        info.innerContent = "";
+    }
+
+    info.isValid = true;
+    return info;
+}
+
 void CodeViewEditor::TranslateBlock(const QString &directionAndModel)
 {
+    QString arg = directionAndModel;
+    if (arg.startsWith("all:")) {
+        arg = arg.mid(4);
+        QStringList parts = arg.split("|");
+        if (parts.size() != 2) {
+            return;
+        }
+        StartTranslateAllBlocks(parts[0], parts[1]);
+        return;
+    }
+
     BlockInfo block = FindCurrentBlock();
     if (!block.isValid) {
         return;
@@ -3798,8 +3885,58 @@ void CodeViewEditor::TranslateBlock(const QString &directionAndModel)
     m_translator->translate(fullBlock, direction, model);
 }
 
+void CodeViewEditor::StartTranslateAllBlocks(const QString &direction, const QString &model)
+{
+    m_translateAllMode = true;
+    m_translateAllDirection = direction;
+    m_translateAllModel = model;
+    m_translateAllNextStartPos = 0;
+    m_translateAllCount = 0;
+
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+    emit ShowStatusMessageRequest(tr("Translating all <p>/<li> blocks with %1...").arg(model));
+
+    TranslateNextAllBlock();
+}
+
+void CodeViewEditor::TranslateNextAllBlock()
+{
+    if (!m_translateAllMode) {
+        return;
+    }
+
+    BlockInfo block = FindNextBlock(m_translateAllNextStartPos, QStringList() << "p" << "li");
+    if (!block.isValid) {
+        QApplication::restoreOverrideCursor();
+        emit ShowStatusMessageRequest(tr("All <p>/<li> blocks translated (%1 blocks)").arg(m_translateAllCount));
+        m_translateAllMode = false;
+        return;
+    }
+
+    m_translateStartPos = block.startPos;
+    m_translateEndPos = block.endPos;
+    m_translateAllCount++;
+
+    emit ShowStatusMessageRequest(tr("Translating <p>/<li> block %1 with %2...").arg(m_translateAllCount).arg(m_translateAllModel));
+
+    QString fullBlock = toPlainText().mid(block.startPos, block.endPos - block.startPos);
+    m_translator->translate(fullBlock, m_translateAllDirection, m_translateAllModel);
+}
+
 void CodeViewEditor::OnTranslationReady(const QString &newBlock)
 {
+    if (m_translateAllMode) {
+        QTextCursor cursor = textCursor();
+        cursor.setPosition(m_translateStartPos);
+        cursor.setPosition(m_translateEndPos, QTextCursor::KeepAnchor);
+        cursor.insertText(newBlock);
+
+        m_translateAllNextStartPos = m_translateStartPos + newBlock.length();
+
+        TranslateNextAllBlock();
+        return;
+    }
+
     QApplication::restoreOverrideCursor();
     emit ShowStatusMessageRequest(tr("Translation complete"));
 
@@ -3813,6 +3950,8 @@ void CodeViewEditor::OnTranslationError(const QString &message)
 {
     QApplication::restoreOverrideCursor();
     emit ShowStatusMessageRequest(tr("Translation failed"));
+
+    m_translateAllMode = false;
 
     QMessageBox::warning(this, tr("Translation Error"), message);
 }

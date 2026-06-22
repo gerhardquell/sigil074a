@@ -620,6 +620,9 @@ private:
         bool isValid;
     };
     BlockInfo FindCurrentBlock();
+    BlockInfo FindNextBlock(int startPos, const QStringList &tagNames);
+    void StartTranslateAllBlocks(const QString &direction, const QString &model);
+    void TranslateNextAllBlock();
 
     bool CreateMenuEntries(QMenu *parent_menu, QAction *topAction, QStandardItem *item);
 
@@ -850,6 +853,11 @@ private:
     Translator *m_translator;
     int m_translateStartPos;
     int m_translateEndPos;
+    bool m_translateAllMode;
+    QString m_translateAllDirection;
+    QString m_translateAllModel;
+    int m_translateAllNextStartPos;
+    int m_translateAllCount;
 };
 
 #endif // CODEVIEWEDITOR_H

@@ -11,7 +11,7 @@ This is a Qt 6.9.2 port of [Sigil](https://github.com/user-none/Sigil) (version 
 - **Qt 6.9.2** — Full migration from Qt 5.2
 - **CodeView-Only** — BookView (WebKit WYSIWYG) replaced with read-only Preview panel (QWebEngineView)
 - **Preview Panel** — Split view: CodeView editor + live Preview, debounced updates (400ms)
-- **Block Translator** — Translate XHTML blocks via LLM (right-click in CodeView)
+- **Block Translator** — Translate XHTML blocks via LLM (right-click in CodeView), including batch translation of all `<p>` and `<li>` blocks
 - **User Templates** — Customizable templates from `~/.sigil/`
 - **Paste Image** — Paste images from clipboard as PNG via right-click in Images folder
 - **13pt UI Font** — Application-wide font size for readability
@@ -43,6 +43,14 @@ Right-click any XHTML block in CodeView to translate it via an OpenAI-compatible
 1. Right-click in CodeView → "Translate" → choose direction (EN→DE / DE→EN) and model
 2. The current block is sent to the LLM with inline HTML tags encoded as placeholders
 3. The translated text replaces the original block in-place, preserving all HTML tags and attributes
+
+**Batch Translation:**
+
+The Translate menu also contains **`<p> English → Deutsch`** and **`<p> Deutsch → English`**. These translate every `<p>...</p>` and `<li>...</li>` block in the current document sequentially. The existing block is replaced after each response, then the next block is sent automatically.
+
+1. Right-click in CodeView → "Translate" → choose a `<p> ...` direction and model
+2. All paragraph and list-item blocks are translated one after another
+3. Status bar shows progress (`Translating <p>/<li> block N with <model>...`)
 
 **Configuration:**
 
