@@ -211,13 +211,6 @@ signals:
 protected:
     void showEvent(QShowEvent *event);
     /**
-     * Workaround for legacy Qt bug, which does not save/restore window state
-     * correctly if maximized at the time of calling saveGeometry().
-     */
-    void moveEvent(QMoveEvent *event);
-    void resizeEvent(QResizeEvent *event);
-
-    /**
      * Overrides the closeEvent handler so we can check
      * for saved status before actually closing.
      *
@@ -944,11 +937,6 @@ private:
     PasteTarget *m_LastPasteTarget;
 
     bool m_ZoomPreview;
-
-    /**
-     * Workaround for legacy Qt bug, to track the last known window size when not maximized.
-     */
-    QByteArray m_LastWindowSize;
 
     QTimer &m_PreviewTimer;
 
