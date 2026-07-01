@@ -3734,6 +3734,25 @@ void CodeViewEditor::WrapSelectionWithPreCode()
     setTextCursor(cursor);
 }
 
+void CodeViewEditor::WrapSelectionWithHtmlEscapes()
+{
+    QTextCursor cursor = textCursor();
+    if (!cursor.hasSelection()) {
+        return;
+    }
+    int start = cursor.selectionStart();
+    QString selected = cursor.selectedText();
+    selected.replace('<', "&lt;");
+    selected.replace('>', "&gt;");
+    cursor.beginEditBlock();
+    cursor.insertText(selected);
+    cursor.endEditBlock();
+    // Re-select the escaped content
+    cursor.setPosition(start);
+    cursor.setPosition(start + selected.length(), QTextCursor::KeepAnchor);
+    setTextCursor(cursor);
+}
+
 CodeViewEditor::BlockInfo CodeViewEditor::FindCurrentBlock()
 {
     BlockInfo info;
