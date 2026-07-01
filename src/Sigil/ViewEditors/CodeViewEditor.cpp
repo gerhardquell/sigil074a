@@ -3633,6 +3633,8 @@ void CodeViewEditor::AddWrapTagsContextMenu(QMenu *menu)
     QAction *wrapLiAction = wrapMenu->addAction(tr("with <li>…</li>"));
     connect(wrapLiAction, &QAction::triggered, this, &CodeViewEditor::WrapSelectionWithLi);
 
+    QAction *wrapEscapeAction = wrapMenu->addAction(tr("Escape < and >"));
+    connect(wrapEscapeAction, &QAction::triggered, this, &CodeViewEditor::WrapSelectionWithHtmlEscapes);
 
     // Insert after Translate menu (which was inserted at top)
     QList<QAction *> actions = menu->actions();
