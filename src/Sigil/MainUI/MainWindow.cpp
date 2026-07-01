@@ -2970,11 +2970,20 @@ void MainWindow::ReadSettings()
     ui.actionAutoSpellCheck->setChecked(settings.spellCheck());
     emit SettingsChanged();
     settings.beginGroup(SETTINGS_GROUP);
-    // Qt 6: restoreGeometry restores geometry and window state together
+    // Qt 6: restoreGeometry restores geometry and window state together.
+    // One-time migration: if the legacy "maximized" key exists, apply it
+    // and remove it so future runs rely on the combined geometry value.
     QByteArray geometry = settings.value("geometry").toByteArray();
 
     if (!geometry.isNull()) {
         restoreGeometry(geometry);
+    }
+
+    if (settings.contains("maximized")) {
+        if (settings.value("maximized", false).toBool()) {
+            setWindowState(windowState() | Qt::WindowMaximized);
+        }
+        settings.remove("maximized");
     }
 
     // The positions of all the toolbars and dock widgets
