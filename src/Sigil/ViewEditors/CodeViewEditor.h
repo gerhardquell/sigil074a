@@ -536,6 +536,7 @@ private slots:
     void WrapSelectionWithH2();
     void WrapSelectionWithLi();
     void WrapSelectionWithPreCode();
+    void WrapSelectionWithHtmlEscapes();
 
 private:
     bool IsMarkedText();
